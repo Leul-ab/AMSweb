@@ -1,0 +1,11 @@
+﻿<h1>Admin Dashboard</h1>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+<a asp-controller="Teacher" asp-action="Create" class="btn btn-primary">Register Teacher</a>
+<a asp-controller="Admin" asp-action="TeachersList" class="btn btn-secondary">Teachers List</a>

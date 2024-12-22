@@ -1,0 +1,25 @@
+﻿@model IEnumerable<AMS.Models.Teacher>
+
+<h1>Teachers List</h1>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Password</th>
+            <th>Course</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var teacher in Model)
+        {
+            <tr>
+                <td>@teacher.Id</td>
+                <td>@teacher.Name</td>
+                <td>@teacher.Password</td>
+                
+            </tr>
+        }
+    </tbody>
+</table>
