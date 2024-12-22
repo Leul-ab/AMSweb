@@ -1,0 +1,43 @@
+﻿@{
+    var teacher = ViewBag.Teacher;
+    var sections = ViewBag.Sections as List<AMS.Models.Section>;
+    var generatedCode = TempData["GeneratedCode"];
+}
+
+<h1>Generate Code</h1>
+
+@if (teacher != null)
+{
+    <p><strong>Teacher ID:</strong> @teacher.Id</p>
+    <p><strong>Teacher Name:</strong> @teacher.Name</p>
+    <p><strong>Course Name:</strong> @teacher.CourseName</p>
+}
+else
+{
+    <p>No teacher information found.</p>
+}
+
+@if (sections != null && sections.Any())
+{
+    <form asp-action="GenerateCode" method="post">
+        <div class="form-group">
+            <label for="Section">Select Section</label>
+            <select name="sectionId" class="form-control" required>
+                <option value="">-- Select Section --</option>
+                @foreach (var sec in sections)
+                {
+                    <option value="@sec.Id">@sec.Name</option>
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Generate Code</button>
+    </form>
+}
+
+@if (generatedCode != null)
+{
+    <div class="form-group mt-4">
+        <label for="GeneratedCode">Generated Code</label>
+        <input type="text" id="GeneratedCode" class="form-control" value="@generatedCode" readonly />
+    </div>
+}

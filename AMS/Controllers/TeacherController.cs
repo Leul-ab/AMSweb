@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using AMS.Models;
+﻿using AMS.Models;
+using Microsoft.AspNetCore.Mvc;
 using System.Data.SqlClient;
 
 namespace AMS.Controllers
@@ -13,14 +13,11 @@ namespace AMS.Controllers
             _connectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
+        // Create Teacher
         public IActionResult Create()
         {
-            // Populate courses
             ViewBag.Courses = GetCourses();
-
-            // Populate sections
             ViewBag.Sections = GetSections();
-
             return View();
         }
 
@@ -29,26 +26,20 @@ namespace AMS.Controllers
         {
             try
             {
-                // Save teacher and assigned sections
                 SaveTeacher(teacher, SectionIds);
-
-                // Set success message
                 TempData["SuccessMessage"] = "Teacher created successfully!";
             }
             catch (Exception ex)
             {
-                // Set error message
                 TempData["ErrorMessage"] = $"Error creating teacher: {ex.Message}";
             }
 
-            // Redirect to Create page to show the message
             return RedirectToAction("Create");
         }
 
         private List<Course> GetCourses()
         {
             var courses = new List<Course>();
-
             using (SqlConnection connection = new SqlConnection(_connectionString))
             {
                 string query = "SELECT Id, Name FROM Course";
@@ -65,14 +56,12 @@ namespace AMS.Controllers
                     });
                 }
             }
-
             return courses;
         }
 
         private List<Section> GetSections()
         {
             var sections = new List<Section>();
-
             using (SqlConnection connection = new SqlConnection(_connectionString))
             {
                 string query = "SELECT Id, Name FROM Section";
@@ -89,7 +78,6 @@ namespace AMS.Controllers
                     });
                 }
             }
-
             return sections;
         }
 
@@ -99,7 +87,6 @@ namespace AMS.Controllers
             {
                 connection.Open();
 
-                // Insert teacher
                 string teacherQuery = "INSERT INTO Teacher (Name, Password, CourseId) VALUES (@Name, @Password, @CourseId); SELECT SCOPE_IDENTITY();";
                 SqlCommand teacherCommand = new SqlCommand(teacherQuery, connection);
                 teacherCommand.Parameters.AddWithValue("@Name", teacher.Name);
@@ -108,7 +95,6 @@ namespace AMS.Controllers
 
                 int teacherId = Convert.ToInt32(teacherCommand.ExecuteScalar());
 
-                // Insert teacher sections
                 foreach (var sectionId in SectionIds)
                 {
                     string sectionQuery = "INSERT INTO TeacherSection (TeacherId, SectionId) VALUES (@TeacherId, @SectionId)";
@@ -121,12 +107,14 @@ namespace AMS.Controllers
             }
         }
 
+        // Login
         [HttpGet]
         public IActionResult Login()
         {
             return View();
         }
 
+        [HttpPost]
         [HttpPost]
         public IActionResult Login(Teacher teacher)
         {
@@ -144,13 +132,13 @@ namespace AMS.Controllers
 
                     if (reader.Read())
                     {
-                        // Login successful
+                        int teacherId = (int)reader["Id"];
+                        HttpContext.Session.SetInt32("TeacherId", teacherId); // Save TeacherId in session
                         TempData["WelcomeMessage"] = $"Welcome, {reader["Name"]}!";
-                        return RedirectToAction("Welcome");
+                        return RedirectToAction("TeacherDashboard");
                     }
                     else
                     {
-                        // Login failed
                         TempData["ErrorMessage"] = "Invalid Name or Password!";
                         return View();
                     }
@@ -163,10 +151,87 @@ namespace AMS.Controllers
             }
         }
 
-        public IActionResult Welcome()
+
+        public IActionResult TeacherDashboard()
         {
             ViewBag.Message = TempData["WelcomeMessage"];
             return View();
+        }
+
+        // Generate Code
+        [HttpGet]
+        [HttpGet]
+        public IActionResult GenerateCode()
+        {
+            if (HttpContext.Session.GetInt32("TeacherId") is int teacherId)
+            {
+                using (SqlConnection connection = new SqlConnection(_connectionString))
+                {
+                    connection.Open();
+
+                    // Fetch teacher details
+                    string teacherQuery = "SELECT t.Id, t.Name, c.Name AS CourseName " +
+                                          "FROM Teacher t " +
+                                          "INNER JOIN Course c ON t.CourseId = c.Id " +
+                                          "WHERE t.Id = @Id";
+                    SqlCommand teacherCommand = new SqlCommand(teacherQuery, connection);
+                    teacherCommand.Parameters.AddWithValue("@Id", teacherId);
+
+                    SqlDataReader teacherReader = teacherCommand.ExecuteReader();
+                    if (teacherReader.Read())
+                    {
+                        ViewBag.Teacher = new
+                        {
+                            Id = (int)teacherReader["Id"],
+                            Name = teacherReader["Name"].ToString(),
+                            CourseName = teacherReader["CourseName"].ToString()
+                        };
+                    }
+                    teacherReader.Close();
+
+                    // Fetch sections
+                    string sectionsQuery = "SELECT s.Id, s.Name FROM Section s " +
+                                           "INNER JOIN TeacherSection ts ON s.Id = ts.SectionId " +
+                                           "WHERE ts.TeacherId = @TeacherId";
+                    SqlCommand sectionsCommand = new SqlCommand(sectionsQuery, connection);
+                    sectionsCommand.Parameters.AddWithValue("@TeacherId", teacherId);
+
+                    SqlDataReader sectionsReader = sectionsCommand.ExecuteReader();
+                    var sections = new List<Section>();
+                    while (sectionsReader.Read())
+                    {
+                        sections.Add(new Section
+                        {
+                            Id = (int)sectionsReader["Id"],
+                            Name = sectionsReader["Name"].ToString()
+                        });
+                    }
+                    ViewBag.Sections = sections;
+                }
+
+                return View();
+            }
+
+            TempData["ErrorMessage"] = "Session expired. Please log in again.";
+            return RedirectToAction("Login");
+        }
+
+        [HttpPost]
+        public IActionResult GenerateCode(int sectionId)
+        {
+            if (HttpContext.Session.GetInt32("TeacherId") is int teacherId)
+            {
+                // Generate a unique code
+                string generatedCode = Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
+
+                // Return the generated code to the view
+                TempData["GeneratedCode"] = generatedCode;
+
+                return RedirectToAction("GenerateCode");
+            }
+
+            TempData["ErrorMessage"] = "Session expired. Please log in again.";
+            return RedirectToAction("Login");
         }
 
     }
