@@ -217,22 +217,97 @@ namespace AMS.Controllers
         }
 
         [HttpPost]
+        [HttpPost]
         public IActionResult GenerateCode(int sectionId)
         {
             if (HttpContext.Session.GetInt32("TeacherId") is int teacherId)
             {
-                // Generate a unique code
-                string generatedCode = Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
+                try
+                {
+                    using (SqlConnection connection = new SqlConnection(_connectionString))
+                    {
+                        connection.Open();
 
-                // Return the generated code to the view
-                TempData["GeneratedCode"] = generatedCode;
+                        // Get the course ID for the logged-in teacher
+                        string courseQuery = "SELECT CourseId FROM Teacher WHERE Id = @TeacherId";
+                        int courseId;
 
-                return RedirectToAction("GenerateCode");
+                        using (SqlCommand courseCommand = new SqlCommand(courseQuery, connection))
+                        {
+                            courseCommand.Parameters.AddWithValue("@TeacherId", teacherId);
+                            object result = courseCommand.ExecuteScalar();
+                            if (result == null)
+                            {
+                                TempData["ErrorMessage"] = "Course not found for the logged-in teacher.";
+                                return RedirectToAction("GenerateCode");
+                            }
+                            courseId = Convert.ToInt32(result);
+                        }
+
+                        // Generate a unique temporary ID
+                        string temporaryId = GenerateUniqueTemporaryId(connection);
+
+                        // Insert into the Attendance table
+                        string insertQuery = "INSERT INTO Attendance (TeacherId, CourseId, SectionId, TemporaryId) " +
+                                             "VALUES (@TeacherId, @CourseId, @SectionId, @TemporaryId)";
+                        using (SqlCommand insertCommand = new SqlCommand(insertQuery, connection))
+                        {
+                            insertCommand.Parameters.AddWithValue("@TeacherId", teacherId);
+                            insertCommand.Parameters.AddWithValue("@CourseId", courseId);
+                            insertCommand.Parameters.AddWithValue("@SectionId", sectionId);
+                            insertCommand.Parameters.AddWithValue("@TemporaryId", temporaryId);
+
+                            insertCommand.ExecuteNonQuery();
+                        }
+
+                        // Display the generated code
+                        TempData["GeneratedCode"] = temporaryId;
+                        TempData["SuccessMessage"] = "Temporary ID generated successfully!";
+                    }
+
+                    return RedirectToAction("GenerateCode");
+                }
+                catch (SqlException ex)
+                {
+                    TempData["ErrorMessage"] = $"SQL Error: {ex.Message}";
+                }
+                catch (Exception ex)
+                {
+                    TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+                }
+            }
+            else
+            {
+                TempData["ErrorMessage"] = "Session expired. Please log in again.";
             }
 
-            TempData["ErrorMessage"] = "Session expired. Please log in again.";
             return RedirectToAction("Login");
         }
+
+        private string GenerateUniqueTemporaryId(SqlConnection connection)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+            var random = new Random();
+            string temporaryId;
+            bool isUnique;
+
+            do
+            {
+                temporaryId = new string(Enumerable.Repeat(chars, 12)
+                    .Select(s => s[random.Next(s.Length)]).ToArray());
+
+                // Check if TemporaryId is unique
+                string checkQuery = "SELECT COUNT(*) FROM Attendance WHERE TemporaryId = @TemporaryId";
+                using (SqlCommand checkCommand = new SqlCommand(checkQuery, connection))
+                {
+                    checkCommand.Parameters.AddWithValue("@TemporaryId", temporaryId);
+                    isUnique = Convert.ToInt32(checkCommand.ExecuteScalar()) == 0;
+                }
+            } while (!isUnique);
+
+            return temporaryId;
+        }
+
 
     }
 }
