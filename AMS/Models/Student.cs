@@ -5,11 +5,7 @@
         public int Id { get; set; }
         public string Name { get; set; }
         public string Password { get; set; }
-
-        // Relationships
-        public int SectionId { get; set; } // Foreign Key
-        public List<StudentCourse> StudentCourses { get; set; } // Navigation Property
+        public int SectionId { get; set; }
+        public string SectionName { get; set; } // Optional: For convenience if you want to display section name
     }
-
-
 }

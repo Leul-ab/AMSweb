@@ -2,8 +2,8 @@
 {
     public class StudentCourse
     {
-        public int StudentId { get; set; } // Foreign Key
-        public int CourseId { get; set; } // Foreign Key
+        public int Id { get; set; }
+        public int StudentId { get; set; }
+        public int CourseId { get; set; }
     }
-
 }

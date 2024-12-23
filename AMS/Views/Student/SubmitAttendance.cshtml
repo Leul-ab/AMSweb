@@ -1,0 +1,39 @@
+﻿@{
+    var studentDetails = ViewBag.StudentDetails;
+}
+
+<h1>Submit Attendance</h1>
+
+@if (studentDetails != null)
+{
+    <div>
+        <h3>Student Details</h3>
+        <p><strong>ID:</strong> @studentDetails.Id</p>
+        <p><strong>Name:</strong> @studentDetails.Name</p>
+        <p><strong>Section:</strong> @studentDetails.Section</p>
+
+        <h4>Courses</h4>
+        <form method="post" asp-action="SubmitAttendance">
+            <div>
+                @foreach (var course in studentDetails.Courses)
+                {
+                    <div>
+                        <input type="radio" id="course_@course.Id" name="courseId" value="@course.Id" required />
+                        <label for="course_@course.Id">@course.Name</label>
+                    </div>
+                }
+            </div>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required />
+            </div>
+            <button type="submit" class="btn btn-primary">Submit Today's Attendance</button>
+        </form>
+    </div>
+}
+else
+{
+    <p>No student details found.</p>
+}
+
+<a asp-action="StudentDashboard" class="btn btn-secondary">Back to Dashboard</a>

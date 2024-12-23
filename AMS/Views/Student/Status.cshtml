@@ -1,0 +1,36 @@
+﻿@model List<dynamic>
+
+<h2>Attendance Status</h2>
+
+@if (Model != null && Model.Count > 0)
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Course Name</th>
+                <th>Section Name</th>
+                @for (int i = 1; i <= 30; i++)
+                {
+                    <th>Day @i</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var attendance in Model)
+            {
+                <tr>
+                    <td>@attendance.CourseName</td>
+                    <td>@attendance.SectionName</td>
+                    @foreach (var day in attendance.Days)
+                    {
+                        <td>@day</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No attendance records found.</p>
+}
