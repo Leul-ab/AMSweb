@@ -160,7 +160,6 @@ namespace AMS.Controllers
 
         // Generate Code
         [HttpGet]
-        [HttpGet]
         public IActionResult GenerateCode()
         {
             if (HttpContext.Session.GetInt32("TeacherId") is int teacherId)
@@ -308,6 +307,149 @@ namespace AMS.Controllers
             return temporaryId;
         }
 
+        [HttpGet]
+        public IActionResult List()
+        {
+            List<TeacherViewModel> teachers = new List<TeacherViewModel>();
+
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(_connectionString))
+                {
+                    string query = @"
+                SELECT t.Id AS TeacherId, t.Name AS TeacherName, 
+                       c.Name AS CourseName, 
+                       STRING_AGG(sec.Name, ', ') AS Sections
+                FROM Teacher t
+                LEFT JOIN TeacherSection ts ON t.Id = ts.TeacherId
+                LEFT JOIN Section sec ON ts.SectionId = sec.Id
+                LEFT JOIN Course c ON t.CourseId = c.Id
+                GROUP BY t.Id, t.Name, c.Name
+                ORDER BY t.Name";
+
+                    SqlCommand command = new SqlCommand(query, connection);
+                    connection.Open();
+
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        teachers.Add(new TeacherViewModel
+                        {
+                            TeacherId = (int)reader["TeacherId"],
+                            TeacherName = reader["TeacherName"].ToString(),
+                            CourseName = reader["CourseName"] != DBNull.Value ? reader["CourseName"].ToString() : "No Course Assigned",
+                            Sections = reader["Sections"] != DBNull.Value ? reader["Sections"].ToString() : "No Sections Assigned"
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+            }
+
+            return View(teachers);
+        }
+
+        [HttpGet]
+        public IActionResult Edit(int id)
+        {
+            Teacher teacher = null;
+
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(_connectionString))
+                {
+                    string query = "SELECT Id, Name, Password, CourseId FROM Teacher WHERE Id = @Id";
+                    SqlCommand command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@Id", id);
+
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    if (reader.Read())
+                    {
+                        teacher = new Teacher
+                        {
+                            Id = (int)reader["Id"],
+                            Name = reader["Name"].ToString(),
+                            Password = reader["Password"].ToString(),
+                            CourseId = (int)reader["CourseId"]
+                        };
+                    }
+                }
+
+                if (teacher == null)
+                {
+                    TempData["ErrorMessage"] = "Teacher not found.";
+                    return RedirectToAction("List");
+                }
+
+                // Populate courses for dropdown
+                ViewBag.Courses = GetCourses();
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+                return RedirectToAction("List");
+            }
+
+            return View(teacher);
+        }
+
+        [HttpPost]
+        public IActionResult Edit(Teacher teacher)
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(_connectionString))
+                {
+                    string query = "UPDATE Teacher SET Name = @Name, Password = @Password, CourseId = @CourseId WHERE Id = @Id";
+                    SqlCommand command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@Name", teacher.Name);
+                    command.Parameters.AddWithValue("@Password", teacher.Password);
+                    command.Parameters.AddWithValue("@CourseId", teacher.CourseId);
+                    command.Parameters.AddWithValue("@Id", teacher.Id);
+
+                    connection.Open();
+                    command.ExecuteNonQuery();
+                }
+
+                TempData["SuccessMessage"] = "Teacher updated successfully.";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+            }
+
+            return RedirectToAction("List");
+        }
+
+        [HttpGet]
+        public IActionResult Delete(int id)
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(_connectionString))
+                {
+                    string query = "DELETE FROM Teacher WHERE Id = @Id";
+                    SqlCommand command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@Id", id);
+
+                    connection.Open();
+                    command.ExecuteNonQuery();
+                }
+
+                TempData["SuccessMessage"] = "Teacher deleted successfully.";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+            }
+
+            return RedirectToAction("List");
+        }
 
     }
 }

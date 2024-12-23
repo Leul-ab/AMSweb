@@ -1,0 +1,40 @@
+﻿@model List<AMS.Models.TeacherViewModel>
+
+<div>
+    <h1>Registered Teachers</h1>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
+
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Teacher ID</th>
+                <th>Teacher Name</th>
+                <th>Course</th>
+                <th>Sections</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var teacher in Model)
+            {
+                <tr>
+                    <td>@teacher.TeacherId</td>
+                    <td>@teacher.TeacherName</td>
+                    <td>@teacher.CourseName</td>
+                    <td>@teacher.Sections</td>
+                    <td>
+                        <a href="/Teacher/Edit/@teacher.TeacherId" class="btn btn-sm btn-warning">Edit</a>
+                        <a href="/Teacher/Delete/@teacher.TeacherId" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
+                    </td>
+
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <a href="/Admin/Dashboard" class="btn btn-secondary">Back to Dashboard</a>
+</div>

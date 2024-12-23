@@ -1,0 +1,38 @@
+﻿@model AMS.Models.Student
+
+<div>
+    <h1>Edit Student</h1>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    }
+
+    <form method="post">
+        <div class="form-group">
+            <label for="Name">Name</label>
+            <input type="text" name="Name" id="Name" class="form-control" value="@Model.Name" required />
+        </div>
+        <div class="form-group">
+            <label for="Password">Password</label>
+            <input type="password" name="Password" id="Password" class="form-control" value="@Model.Password" required />
+        </div>
+        <div class="form-group">
+            <label for="SectionId">Section</label>
+            <select name="SectionId" id="SectionId" class="form-control" required>
+                @foreach (var sec in ViewBag.Sections as List<AMS.Models.Section>)
+                {
+                   //<option value="@sec.Id" @(Model.SectionId == sec.Id ? "selected" : "")>
+                        @sec.Name
+                    //</option>
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="/Student/List" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>

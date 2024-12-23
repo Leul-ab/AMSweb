@@ -371,5 +371,150 @@ namespace AMS.Controllers
 
             return View();
         }
+
+        [HttpGet]
+        public IActionResult List()
+        {
+            List<StudentViewModel> students = new List<StudentViewModel>();
+
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(_connectionString))
+                {
+                    string query = @"
+                SELECT s.Id AS StudentId, s.Name AS StudentName, 
+                       sec.Name AS SectionName, 
+                       STRING_AGG(c.Name, ', ') AS Courses
+                FROM Student s
+                INNER JOIN Section sec ON s.SectionId = sec.Id
+                LEFT JOIN StudentCourse sc ON s.Id = sc.StudentId
+                LEFT JOIN Course c ON sc.CourseId = c.Id
+                GROUP BY s.Id, s.Name, sec.Name
+                ORDER BY s.Name";
+
+                    SqlCommand command = new SqlCommand(query, connection);
+                    connection.Open();
+
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        students.Add(new StudentViewModel
+                        {
+                            StudentId = (int)reader["StudentId"],
+                            StudentName = reader["StudentName"].ToString(),
+                            SectionName = reader["SectionName"].ToString(),
+                            Courses = reader["Courses"] != DBNull.Value ? reader["Courses"].ToString() : "No Courses Assigned"
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+            }
+
+            return View(students);
+        }
+
+        [HttpGet]
+        public IActionResult Edit(int id)
+        {
+            Student student = null;
+
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(_connectionString))
+                {
+                    string query = "SELECT Id, Name, Password, SectionId FROM Student WHERE Id = @Id";
+                    SqlCommand command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@Id", id);
+
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    if (reader.Read())
+                    {
+                        student = new Student
+                        {
+                            Id = (int)reader["Id"],
+                            Name = reader["Name"].ToString(),
+                            Password = reader["Password"].ToString(),
+                            SectionId = (int)reader["SectionId"]
+                        };
+                    }
+                }
+
+                if (student == null)
+                {
+                    TempData["ErrorMessage"] = "Student not found.";
+                    return RedirectToAction("List");
+                }
+
+                // Populate sections for dropdown
+                ViewBag.Sections = GetSections();
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+                return RedirectToAction("List");
+            }
+
+            return View(student);
+        }
+
+        [HttpPost]
+        public IActionResult Edit(Student student)
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(_connectionString))
+                {
+                    string query = "UPDATE Student SET Name = @Name, Password = @Password, SectionId = @SectionId WHERE Id = @Id";
+                    SqlCommand command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@Name", student.Name);
+                    command.Parameters.AddWithValue("@Password", student.Password);
+                    command.Parameters.AddWithValue("@SectionId", student.SectionId);
+                    command.Parameters.AddWithValue("@Id", student.Id);
+
+                    connection.Open();
+                    command.ExecuteNonQuery();
+                }
+
+                TempData["SuccessMessage"] = "Student updated successfully.";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+            }
+
+            return RedirectToAction("List");
+        }
+
+        [HttpGet]
+        public IActionResult Delete(int id)
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(_connectionString))
+                {
+                    string query = "DELETE FROM Student WHERE Id = @Id";
+                    SqlCommand command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@Id", id);
+
+                    connection.Open();
+                    command.ExecuteNonQuery();
+                }
+
+                TempData["SuccessMessage"] = "Student deleted successfully.";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+            }
+
+            return RedirectToAction("List");
+        }
+
     }
 }
