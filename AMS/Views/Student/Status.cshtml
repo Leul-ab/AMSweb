@@ -1,36 +1,29 @@
-﻿@model List<dynamic>
+﻿@model List<AMS.Models.AttendanceStatusViewModel>
 
 <h2>Attendance Status</h2>
 
-@if (Model != null && Model.Count > 0)
-{
-    <table class="table table-striped">
-        <thead>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Course Name</th>
+            <th>Section Name</th>
+            <th>Day 1</th>
+            <th>Day 2</th>
+            <th>Day 3</th>
+            <!-- Add more days as needed -->
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var status in Model)
+        {
             <tr>
-                <th>Course Name</th>
-                <th>Section Name</th>
-                @for (int i = 1; i <= 30; i++)
-                {
-                    <th>Day @i</th>
-                }
+                <td>@status.CourseName</td>
+                <td>@status.SectionName</td>
+                <td>@(status.Day1.HasValue && status.Day1.Value ? "Present" : "Absent")</td>
+                <td>@(status.Day2.HasValue && status.Day2.Value ? "Present" : "Absent")</td>
+                <td>@(status.Day3.HasValue && status.Day3.Value ? "Present" : "Absent")</td>
+                <!-- Add more days as needed -->
             </tr>
-        </thead>
-        <tbody>
-            @foreach (var attendance in Model)
-            {
-                <tr>
-                    <td>@attendance.CourseName</td>
-                    <td>@attendance.SectionName</td>
-                    @foreach (var day in attendance.Days)
-                    {
-                        <td>@day</td>
-                    }
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-else
-{
-    <p>No attendance records found.</p>
-}
+        }
+    </tbody>
+</table>

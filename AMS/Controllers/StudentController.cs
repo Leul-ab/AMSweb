@@ -1,6 +1,7 @@
 ﻿using AMS.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 
 namespace AMS.Controllers
 {
@@ -172,10 +173,10 @@ namespace AMS.Controllers
         {
             if (HttpContext.Session.GetInt32("StudentId") is int studentId)
             {
-                var studentDetails = new
+                var model = new SubmitAttendanceViewModel
                 {
+                    StudentId = studentId,
                     Name = string.Empty,
-                    Id = studentId,
                     Section = string.Empty,
                     Courses = new List<Course>()
                 };
@@ -197,13 +198,8 @@ namespace AMS.Controllers
                         {
                             if (reader.Read())
                             {
-                                studentDetails = new
-                                {
-                                    Name = reader["Name"].ToString(),
-                                    Id = studentId,
-                                    Section = reader["SectionName"].ToString(),
-                                    Courses = new List<Course>()
-                                };
+                                model.Name = reader["Name"].ToString();
+                                model.Section = reader["SectionName"].ToString();
                             }
                         }
                     }
@@ -221,7 +217,7 @@ namespace AMS.Controllers
                         {
                             while (courseReader.Read())
                             {
-                                studentDetails.Courses.Add(new Course
+                                model.Courses.Add(new Course
                                 {
                                     Id = (int)courseReader["Id"],
                                     Name = courseReader["Name"].ToString()
@@ -231,108 +227,149 @@ namespace AMS.Controllers
                     }
                 }
 
-                ViewBag.StudentDetails = studentDetails;
-                return View();
+                return View(model);
             }
 
             TempData["ErrorMessage"] = "Session expired. Please log in again.";
             return RedirectToAction("Login");
         }
+
 
         [HttpPost]
-        public IActionResult SubmitAttendance(int courseId, string password)
+        public IActionResult SubmitAttendance(int CourseId, string TemporaryId)
         {
-            if (HttpContext.Session.GetInt32("StudentId") is int studentId)
+            if (HttpContext.Session.GetInt32("StudentId") is not int studentId)
             {
-                using (SqlConnection connection = new SqlConnection(_connectionString))
-                {
-                    connection.Open();
-
-                    // Verify student password
-                    string passwordQuery = "SELECT Password FROM Student WHERE Id = @StudentId";
-                    using (SqlCommand passwordCommand = new SqlCommand(passwordQuery, connection))
-                    {
-                        passwordCommand.Parameters.AddWithValue("@StudentId", studentId);
-                        string storedPassword = passwordCommand.ExecuteScalar()?.ToString();
-
-                        if (storedPassword != password)
-                        {
-                            TempData["ErrorMessage"] = "Invalid password!";
-                            return RedirectToAction("SubmitAttendance");
-                        }
-                    }
-
-                    // Mark attendance
-                    string attendanceQuery = "INSERT INTO Attendance (TeacherId, CourseId, SectionId, TemporaryId) " +
-                                             "SELECT t.Id, @CourseId, s.SectionId, NEWID() " +
-                                             "FROM Student s " +
-                                             "INNER JOIN Course c ON c.Id = @CourseId " +
-                                             "INNER JOIN Teacher t ON t.CourseId = c.Id " +
-                                             "WHERE s.Id = @StudentId";
-                    using (SqlCommand attendanceCommand = new SqlCommand(attendanceQuery, connection))
-                    {
-                        attendanceCommand.Parameters.AddWithValue("@StudentId", studentId);
-                        attendanceCommand.Parameters.AddWithValue("@CourseId", courseId);
-
-                        attendanceCommand.ExecuteNonQuery();
-                    }
-                }
-
-                TempData["SuccessMessage"] = "Attendance submitted successfully!";
-                return RedirectToAction("SubmitAttendance");
+                TempData["ErrorMessage"] = "Session expired. Please log in again.";
+                return RedirectToAction("Login");
             }
 
-            TempData["ErrorMessage"] = "Session expired. Please log in again.";
-            return RedirectToAction("Login");
-        }
-
-
-        [HttpGet]
-        public IActionResult Status()
-        {
-            if (HttpContext.Session.GetInt32("StudentId") is int studentId)
+            try
             {
-                var attendanceList = new List<dynamic>();
-
                 using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
+                    // Query to find the relevant Attendance record
                     string query = @"
-                SELECT a.Id, c.Name AS CourseName, s.Name AS SectionName, a.Day1, a.Day2, a.Day3, a.Day4, a.Day5, a.Day6, a.Day7, 
-                       a.Day8, a.Day9, a.Day10, a.Day11, a.Day12, a.Day13, a.Day14, a.Day15, a.Day16, a.Day17, a.Day18, a.Day19, 
-                       a.Day20, a.Day21, a.Day22, a.Day23, a.Day24, a.Day25, a.Day26, a.Day27, a.Day28, a.Day29, a.Day30
-                FROM Attendance a
-                INNER JOIN Course c ON a.CourseId = c.Id
-                INNER JOIN Section s ON a.SectionId = s.Id
-                INNER JOIN StudentCourse sc ON sc.CourseId = c.Id
-                WHERE sc.StudentId = @StudentId";
+                        SELECT Id, Day1, Day2, Day3, Day4, Day5, Day6, Day7, Day8, Day9, Day10,
+                               Day11, Day12, Day13, Day14, Day15, Day16, Day17, Day18, Day19, Day20,
+                               Day21, Day22, Day23, Day24, Day25, Day26, Day27, Day28, Day29, Day30
+                        FROM Attendance
+                        WHERE CourseId = @CourseId AND SectionId = 
+                        (SELECT SectionId FROM Student WHERE Id = @StudentId) AND TemporaryId = @TemporaryId";
 
                     SqlCommand command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@CourseId", CourseId);
                     command.Parameters.AddWithValue("@StudentId", studentId);
+                    command.Parameters.AddWithValue("@TemporaryId", TemporaryId);
 
                     connection.Open();
                     SqlDataReader reader = command.ExecuteReader();
 
-                    while (reader.Read())
+                    if (reader.Read())
                     {
-                        attendanceList.Add(new
+                        int attendanceId = (int)reader["Id"];
+
+                        // Find the first null day (e.g., Day1, Day2, etc.)
+                        string dayToUpdate = null;
+                        for (int i = 1; i <= 30; i++)
                         {
-                            Id = reader["Id"],
-                            CourseName = reader["CourseName"].ToString(),
-                            SectionName = reader["SectionName"].ToString(),
-                            Days = Enumerable.Range(1, 30)
-                                             .Select(day => reader[$"Day{day}"] is DBNull ? "N/A" : (bool)reader[$"Day{day}"] ? "✔️" : "❌")
-                                             .ToList()
-                        });
+                            if (reader[$"Day{i}"] == DBNull.Value)
+                            {
+                                dayToUpdate = $"Day{i}";
+                                break;
+                            }
+                        }
+
+                        if (dayToUpdate != null)
+                        {
+                            reader.Close();
+
+                            // Update the found day column to TRUE
+                            string updateQuery = $@"
+                                UPDATE Attendance 
+                                SET {dayToUpdate} = 1 
+                                WHERE Id = @AttendanceId";
+
+                            SqlCommand updateCommand = new SqlCommand(updateQuery, connection);
+                            updateCommand.Parameters.AddWithValue("@AttendanceId", attendanceId);
+                            updateCommand.ExecuteNonQuery();
+
+                            TempData["SuccessMessage"] = "Attendance submitted successfully!";
+                        }
+                        else
+                        {
+                            TempData["ErrorMessage"] = "Attendance for all days has already been submitted.";
+                        }
+                    }
+                    else
+                    {
+                        TempData["ErrorMessage"] = "Invalid Temporary ID or Course.";
                     }
                 }
-
-                return View(attendanceList);
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
             }
 
-            TempData["ErrorMessage"] = "Session expired. Please log in again.";
-            return RedirectToAction("Login");
+            return RedirectToAction("SubmitAttendance");
         }
 
+        [HttpGet]
+        public IActionResult Status()
+        {
+            if (HttpContext.Session.GetInt32("StudentId") is not int studentId)
+            {
+                TempData["ErrorMessage"] = "Session expired. Please log in again.";
+                return RedirectToAction("Login");
+            }
 
+            List<AttendanceStatusViewModel> statuses = new List<AttendanceStatusViewModel>();
+
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(_connectionString))
+                {
+                    connection.Open();
+
+                    string query = @"
+                        SELECT c.Name AS CourseName, s.Name AS SectionName,
+                               a.Day1, a.Day2, a.Day3, a.Day4, a.Day5, 
+                               a.Day6, a.Day7, a.Day8, a.Day9, a.Day10
+                        FROM Attendance a
+                        INNER JOIN Course c ON a.CourseId = c.Id
+                        INNER JOIN Section s ON a.SectionId = s.Id
+                        INNER JOIN StudentCourse sc ON sc.CourseId = c.Id
+                        WHERE sc.StudentId = @StudentId";
+
+                    SqlCommand command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@StudentId", studentId);
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        statuses.Add(new AttendanceStatusViewModel
+                        {
+                            CourseName = reader["CourseName"].ToString(),
+                            SectionName = reader["SectionName"].ToString(),
+                            Day1 = reader["Day1"] != DBNull.Value ? (bool?)Convert.ToBoolean(reader["Day1"]) : null,
+                            Day2 = reader["Day2"] != DBNull.Value ? (bool?)Convert.ToBoolean(reader["Day2"]) : null,
+                            Day3 = reader["Day3"] != DBNull.Value ? (bool?)Convert.ToBoolean(reader["Day3"]) : null,
+                            // Continue for all days up to Day30
+                        });
+
+                    }
+
+                }
+
+                ViewBag.Statuses = statuses;
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"An error occurred while fetching attendance: {ex.Message}";
+            }
+
+            return View();
+        }
     }
 }
