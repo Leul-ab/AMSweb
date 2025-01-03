@@ -248,18 +248,27 @@ namespace AMS.Controllers
             {
                 using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
-                    // Query to find the relevant Attendance record
+                    // Extract the day from the TemporaryId (e.g., ABCD1234-2-3 -> Day 2)
+                    var parts = TemporaryId.Split('-');
+                    if (parts.Length < 3)
+                    {
+                        TempData["ErrorMessage"] = "Invalid Temporary ID format.";
+                        return RedirectToAction("SubmitAttendance");
+                    }
+
+                    int day = int.Parse(parts[1]);  // Day is the second part of the TemporaryId
+                    int sectionId = int.Parse(parts[2]);  // Section is the third part of the TemporaryId
+
                     string query = @"
-                        SELECT Id, Day1, Day2, Day3, Day4, Day5, Day6, Day7, Day8, Day9, Day10,
-                               Day11, Day12, Day13, Day14, Day15, Day16, Day17, Day18, Day19, Day20,
-                               Day21, Day22, Day23, Day24, Day25, Day26, Day27, Day28, Day29, Day30
-                        FROM Attendance
-                        WHERE CourseId = @CourseId AND SectionId = 
-                        (SELECT SectionId FROM Student WHERE Id = @StudentId) AND TemporaryId = @TemporaryId";
+            SELECT Id, Day1, Day2, Day3, Day4, Day5, Day6, Day7, Day8, Day9, Day10,
+                   Day11, Day12, Day13, Day14, Day15, Day16, Day17, Day18, Day19, Day20,
+                   Day21, Day22, Day23, Day24, Day25, Day26, Day27, Day28, Day29, Day30
+            FROM Attendance
+            WHERE CourseId = @CourseId AND SectionId = @SectionId AND TemporaryId = @TemporaryId";
 
                     SqlCommand command = new SqlCommand(query, connection);
                     command.Parameters.AddWithValue("@CourseId", CourseId);
-                    command.Parameters.AddWithValue("@StudentId", studentId);
+                    command.Parameters.AddWithValue("@SectionId", sectionId);  // Pass sectionId from the code
                     command.Parameters.AddWithValue("@TemporaryId", TemporaryId);
 
                     connection.Open();
@@ -269,26 +278,18 @@ namespace AMS.Controllers
                     {
                         int attendanceId = (int)reader["Id"];
 
-                        // Find the first null day (e.g., Day1, Day2, etc.)
-                        string dayToUpdate = null;
-                        for (int i = 1; i <= 30; i++)
-                        {
-                            if (reader[$"Day{i}"] == DBNull.Value)
-                            {
-                                dayToUpdate = $"Day{i}";
-                                break;
-                            }
-                        }
+                        // Find the correct day to update (e.g., Day1, Day2, etc.)
+                        string dayColumn = $"Day{day}";  // This will be Day2, Day3, etc.
 
-                        if (dayToUpdate != null)
+                        if (reader[dayColumn] == DBNull.Value)  // Check if the day is not already submitted
                         {
                             reader.Close();
 
-                            // Update the found day column to TRUE
+                            // Update the found day column to TRUE (submitted)
                             string updateQuery = $@"
-                                UPDATE Attendance 
-                                SET {dayToUpdate} = 1 
-                                WHERE Id = @AttendanceId";
+                    UPDATE Attendance 
+                    SET {dayColumn} = 1 
+                    WHERE Id = @AttendanceId";
 
                             SqlCommand updateCommand = new SqlCommand(updateQuery, connection);
                             updateCommand.Parameters.AddWithValue("@AttendanceId", attendanceId);
@@ -298,7 +299,7 @@ namespace AMS.Controllers
                         }
                         else
                         {
-                            TempData["ErrorMessage"] = "Attendance for all days has already been submitted.";
+                            TempData["ErrorMessage"] = $"Attendance for Day {day} has already been submitted.";
                         }
                     }
                     else
@@ -314,6 +315,8 @@ namespace AMS.Controllers
 
             return RedirectToAction("SubmitAttendance");
         }
+
+
 
         [HttpGet]
         public IActionResult Status()

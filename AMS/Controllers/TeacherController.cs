@@ -115,7 +115,6 @@ namespace AMS.Controllers
         }
 
         [HttpPost]
-        [HttpPost]
         public IActionResult Login(Teacher teacher)
         {
             try
@@ -150,7 +149,6 @@ namespace AMS.Controllers
                 return View();
             }
         }
-
 
         public IActionResult TeacherDashboard()
         {
@@ -217,7 +215,7 @@ namespace AMS.Controllers
 
         [HttpPost]
         [HttpPost]
-        public IActionResult GenerateCode(int sectionId)
+        public IActionResult GenerateCode(int selectedDay, int sectionId)
         {
             if (HttpContext.Session.GetInt32("TeacherId") is int teacherId)
             {
@@ -244,12 +242,16 @@ namespace AMS.Controllers
                         }
 
                         // Generate a unique temporary ID
-                        string temporaryId = GenerateUniqueTemporaryId(connection);
+                        string temporaryId = GenerateUniqueTemporaryId(connection, selectedDay, sectionId);
 
-                        // Insert into the Attendance table
-                        string insertQuery = "INSERT INTO Attendance (TeacherId, CourseId, SectionId, TemporaryId) " +
-                                             "VALUES (@TeacherId, @CourseId, @SectionId, @TemporaryId)";
-                        using (SqlCommand insertCommand = new SqlCommand(insertQuery, connection))
+                        // Insert or update Attendance for the selected section and day
+                        string insertOrUpdateQuery = @"
+                    IF EXISTS (SELECT 1 FROM Attendance WHERE TeacherId = @TeacherId AND CourseId = @CourseId AND SectionId = @SectionId)
+                    BEGIN
+                        UPDATE Attendance 
+                        SET TemporaryId = @TemporaryId, [Day" + selectedDay + "] = 1 WHERE TeacherId = @TeacherId AND CourseId = @CourseId AND SectionId = @SectionId END ELSE BEGIN INSERT INTO Attendance(TeacherId, CourseId, SectionId, TemporaryId, [Day" + selectedDay + "]) VALUES(@TeacherId, @CourseId, @SectionId, @TemporaryId, 1) END";
+        
+                using (SqlCommand insertCommand = new SqlCommand(insertOrUpdateQuery, connection))
                         {
                             insertCommand.Parameters.AddWithValue("@TeacherId", teacherId);
                             insertCommand.Parameters.AddWithValue("@CourseId", courseId);
@@ -259,9 +261,9 @@ namespace AMS.Controllers
                             insertCommand.ExecuteNonQuery();
                         }
 
-                        // Display the generated code
-                        TempData["GeneratedCode"] = temporaryId;
-                        TempData["SuccessMessage"] = "Temporary ID generated successfully!";
+                        // Confirmation message with details of the generated code
+                        TempData["SuccessMessage"] = $"Temporary ID for {teacherId} ({courseId}) - Section {sectionId}, Day {selectedDay} has been successfully generated!";
+                        TempData["GeneratedCode"] = temporaryId; // Optional: Show the generated code
                     }
 
                     return RedirectToAction("GenerateCode");
@@ -283,7 +285,8 @@ namespace AMS.Controllers
             return RedirectToAction("Login");
         }
 
-        private string GenerateUniqueTemporaryId(SqlConnection connection)
+
+        private string GenerateUniqueTemporaryId(SqlConnection connection, int day, int sectionId)
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
             var random = new Random();
@@ -292,8 +295,12 @@ namespace AMS.Controllers
 
             do
             {
-                temporaryId = new string(Enumerable.Repeat(chars, 12)
+                // Shortened ID to fit within database constraints
+                string randomPart = new string(Enumerable.Repeat(chars, 8)
                     .Select(s => s[random.Next(s.Length)]).ToArray());
+
+                // Include day and section in a compact form
+                temporaryId = $"{randomPart}-{day}-{sectionId}"; // Adjust as needed
 
                 // Check if TemporaryId is unique
                 string checkQuery = "SELECT COUNT(*) FROM Attendance WHERE TemporaryId = @TemporaryId";
@@ -306,6 +313,9 @@ namespace AMS.Controllers
 
             return temporaryId;
         }
+
+
+
 
         [HttpGet]
         public IActionResult List()
@@ -450,6 +460,5 @@ namespace AMS.Controllers
 
             return RedirectToAction("List");
         }
-
     }
 }
