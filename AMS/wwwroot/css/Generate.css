@@ -1,0 +1,140 @@
+﻿/* Global Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Poppins", sans-serif;
+}
+
+body {
+    background: linear-gradient(120deg, #6a11cb, #2575fc);
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* Page Wrapper */
+h1 {
+    font-size: 2rem;
+    color: #fff;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Form Styling */
+form {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 500px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+select.form-control,
+input.form-control {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    outline: none;
+    transition: border 0.3s ease, box-shadow 0.3s ease;
+}
+
+    select.form-control:focus,
+    input.form-control:focus {
+        border: 1px solid #007bff;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+
+button.btn-primary {
+    background: #007bff;
+    color: #fff;
+    font-size: 16px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    display: block;
+    width: 100%;
+}
+
+    button.btn-primary:hover {
+        background: #0056b3;
+    }
+
+/* Success and Error Messages */
+.alert {
+    padding: 15px;
+    border-radius: 5px;
+    font-size: 14px;
+    margin-top: 20px;
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Read-Only Code Input */
+#GeneratedCode {
+    background: #f9f9f9;
+    border: 1px solid #ccc;
+    color: #666;
+    cursor: not-allowed;
+}
+
+/* Teacher Info Styling */
+p {
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+strong {
+    color: #ffde59;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    form {
+        padding: 15px;
+    }
+
+    button.btn-primary {
+        font-size: 14px;
+    }
+
+    p {
+        font-size: 13px;
+    }
+}

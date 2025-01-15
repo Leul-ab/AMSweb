@@ -1,14 +1,21 @@
-﻿<h1>Admin Dashboard</h1>
+﻿
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head><title></title>
+    <link rel="stylesheet" href="~/css/AdminDashboard.css">
+    </head>
+    <body>
+    <h1>Admin Dashboard</h1>
 
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success">
-        @TempData["SuccessMessage"]
-    </div>
-}
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
 
-<a asp-controller="Teacher" asp-action="Create" class="btn btn-primary">Register Teacher</a>
-<a href="/Teacher/List" class="btn btn-primary">Teacher List</a>
-<a href="/Student/Create" class="btn btn-primary">Register Students</a>
-<a href="/Student/List" class="btn btn-primary">Student List</a>
-
+    <a asp-controller="Teacher" asp-action="Create" class="btn btn-primary">Register Teacher</a>
+    <a href="/Teacher/List" class="btn btn-primary">Teacher List</a>
+    <a href="/Student/Create" class="btn btn-primary">Register Students</a>
+    <a href="/Student/List" class="btn btn-primary">Student List</a>
+    </body>
+</html>

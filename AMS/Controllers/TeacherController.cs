@@ -214,7 +214,6 @@ namespace AMS.Controllers
         }
 
         [HttpPost]
-        [HttpPost]
         public IActionResult GenerateCode(int selectedDay, int sectionId)
         {
             if (HttpContext.Session.GetInt32("TeacherId") is int teacherId)
@@ -246,12 +245,12 @@ namespace AMS.Controllers
 
                         // Insert or update Attendance for the selected section and day
                         string insertOrUpdateQuery = @"
-                    IF EXISTS (SELECT 1 FROM Attendance WHERE TeacherId = @TeacherId AND CourseId = @CourseId AND SectionId = @SectionId)
-                    BEGIN
-                        UPDATE Attendance 
-                        SET TemporaryId = @TemporaryId, [Day" + selectedDay + "] = 1 WHERE TeacherId = @TeacherId AND CourseId = @CourseId AND SectionId = @SectionId END ELSE BEGIN INSERT INTO Attendance(TeacherId, CourseId, SectionId, TemporaryId, [Day" + selectedDay + "]) VALUES(@TeacherId, @CourseId, @SectionId, @TemporaryId, 1) END";
-        
-                using (SqlCommand insertCommand = new SqlCommand(insertOrUpdateQuery, connection))
+            IF EXISTS (SELECT NULL FROM Attendance WHERE TeacherId = @TeacherId AND CourseId = @CourseId AND SectionId = @SectionId)
+            BEGIN
+                UPDATE Attendance 
+                SET TemporaryId = @TemporaryId, [Day" + selectedDay + "] = 0 WHERE TeacherId = @TeacherId AND CourseId = @CourseId AND SectionId = @SectionId END ELSE BEGIN INSERT INTO Attendance(TeacherId, CourseId, SectionId, TemporaryId, [Day" + selectedDay + "]) VALUES(@TeacherId, @CourseId, @SectionId, @TemporaryId, 0) END";
+
+                        using (SqlCommand insertCommand = new SqlCommand(insertOrUpdateQuery, connection))
                         {
                             insertCommand.Parameters.AddWithValue("@TeacherId", teacherId);
                             insertCommand.Parameters.AddWithValue("@CourseId", courseId);

@@ -1,6 +1,6 @@
 ﻿using AMS.Models;
 using Microsoft.AspNetCore.Mvc;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 
 namespace AMS.Controllers
@@ -234,83 +234,118 @@ namespace AMS.Controllers
             return RedirectToAction("Login");
         }
 
-
         [HttpPost]
         public IActionResult SubmitAttendance(int CourseId, string TemporaryId)
         {
-            if (HttpContext.Session.GetInt32("StudentId") is not int studentId)
+            if (HttpContext.Session.GetInt32("StudentId") is int studentId)
             {
-                TempData["ErrorMessage"] = "Session expired. Please log in again.";
-                return RedirectToAction("Login");
-            }
-
-            try
-            {
-                using (SqlConnection connection = new SqlConnection(_connectionString))
+                try
                 {
-                    // Extract the day from the TemporaryId (e.g., ABCD1234-2-3 -> Day 2)
-                    var parts = TemporaryId.Split('-');
-                    if (parts.Length < 3)
+                    using (SqlConnection connection = new SqlConnection(_connectionString))
                     {
-                        TempData["ErrorMessage"] = "Invalid Temporary ID format.";
-                        return RedirectToAction("SubmitAttendance");
-                    }
+                        connection.Open();
 
-                    int day = int.Parse(parts[1]);  // Day is the second part of the TemporaryId
-                    int sectionId = int.Parse(parts[2]);  // Section is the third part of the TemporaryId
+                        // Validate the TemporaryId and retrieve the Day, SectionId, and TeacherId
+                        string query = @"
+SELECT TeacherId, SectionId, 
+        CASE 
+            WHEN [Day1] = 0 THEN 1
+            WHEN [Day2] = 0 THEN 2
+            WHEN [Day3] = 0 THEN 3
+            WHEN [Day4] = 0 THEN 4
+            WHEN [Day5] = 0 THEN 5
+            -- Repeat for all Day columns (up to Day30)
+            WHEN [Day30] = 0 THEN 30
+            ELSE 0
+        END AS DayNumber
+FROM Attendance
+WHERE TemporaryId = @TemporaryId AND CourseId = @CourseId AND SectionId = (SELECT SectionId FROM Student WHERE Id = @StudentId)";
 
-                    string query = @"
-            SELECT Id, Day1, Day2, Day3, Day4, Day5, Day6, Day7, Day8, Day9, Day10,
-                   Day11, Day12, Day13, Day14, Day15, Day16, Day17, Day18, Day19, Day20,
-                   Day21, Day22, Day23, Day24, Day25, Day26, Day27, Day28, Day29, Day30
-            FROM Attendance
-            WHERE CourseId = @CourseId AND SectionId = @SectionId AND TemporaryId = @TemporaryId";
+                        int dayNumber = 0;
+                        int sectionId = 0;
+                        int teacherId = 0;
 
-                    SqlCommand command = new SqlCommand(query, connection);
-                    command.Parameters.AddWithValue("@CourseId", CourseId);
-                    command.Parameters.AddWithValue("@SectionId", sectionId);  // Pass sectionId from the code
-                    command.Parameters.AddWithValue("@TemporaryId", TemporaryId);
-
-                    connection.Open();
-                    SqlDataReader reader = command.ExecuteReader();
-
-                    if (reader.Read())
-                    {
-                        int attendanceId = (int)reader["Id"];
-
-                        // Find the correct day to update (e.g., Day1, Day2, etc.)
-                        string dayColumn = $"Day{day}";  // This will be Day2, Day3, etc.
-
-                        if (reader[dayColumn] == DBNull.Value)  // Check if the day is not already submitted
+                        using (SqlCommand command = new SqlCommand(query, connection))
                         {
-                            reader.Close();
+                            command.Parameters.AddWithValue("@TemporaryId", TemporaryId);
+                            command.Parameters.AddWithValue("@CourseId", CourseId);
+                            command.Parameters.AddWithValue("@StudentId", studentId); // Use studentId to get the section for the student
 
-                            // Update the found day column to TRUE (submitted)
-                            string updateQuery = $@"
-                    UPDATE Attendance 
-                    SET {dayColumn} = 1 
-                    WHERE Id = @AttendanceId";
-
-                            SqlCommand updateCommand = new SqlCommand(updateQuery, connection);
-                            updateCommand.Parameters.AddWithValue("@AttendanceId", attendanceId);
-                            updateCommand.ExecuteNonQuery();
-
-                            TempData["SuccessMessage"] = "Attendance submitted successfully!";
+                            using (SqlDataReader reader = command.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                {
+                                    dayNumber = reader.GetInt32(reader.GetOrdinal("DayNumber"));
+                                    sectionId = reader.GetInt32(reader.GetOrdinal("SectionId"));
+                                    teacherId = reader.GetInt32(reader.GetOrdinal("TeacherId"));
+                                }
+                            }
                         }
-                        else
+
+                        if (dayNumber == 0)
                         {
-                            TempData["ErrorMessage"] = $"Attendance for Day {day} has already been submitted.";
+                            TempData["ErrorMessage"] = "Invalid or expired Temporary ID.";
+                            return RedirectToAction("SubmitAttendance");
                         }
-                    }
-                    else
-                    {
-                        TempData["ErrorMessage"] = "Invalid Temporary ID or Course.";
+
+                        // Check if the student belongs to the section
+                        string sectionValidationQuery = @"
+SELECT COUNT(1)
+FROM Student
+WHERE Id = @StudentId AND SectionId = @SectionId";
+
+                        using (SqlCommand sectionValidationCommand = new SqlCommand(sectionValidationQuery, connection))
+                        {
+                            sectionValidationCommand.Parameters.AddWithValue("@StudentId", studentId);
+                            sectionValidationCommand.Parameters.AddWithValue("@SectionId", sectionId);
+
+                            int isValid = (int)sectionValidationCommand.ExecuteScalar();
+                            if (isValid == 0)
+                            {
+                                TempData["ErrorMessage"] = "You are not part of the selected section.";
+                                return RedirectToAction("SubmitAttendance");
+                            }
+                        }
+
+                        // Update the Attendance table for the specific student and day
+                        string dayColumn = $"Day{dayNumber}";
+                        string updateQuery = $@"
+UPDATE Attendance
+SET {dayColumn} = 1
+WHERE TemporaryId = @TemporaryId AND CourseId = @CourseId AND SectionId = @SectionId";
+
+                        using (SqlCommand updateCommand = new SqlCommand(updateQuery, connection))
+                        {
+                            updateCommand.Parameters.AddWithValue("@TemporaryId", TemporaryId);
+                            updateCommand.Parameters.AddWithValue("@CourseId", CourseId);
+                            updateCommand.Parameters.AddWithValue("@SectionId", sectionId); // Use the sectionId from the student
+
+                            int rowsAffected = updateCommand.ExecuteNonQuery();
+
+                            if (rowsAffected > 0)
+                            {
+                                TempData["SuccessMessage"] = "Attendance successfully submitted.";
+                                TempData["Day"] = dayNumber; // Send the day number to the view
+                            }
+                            else
+                            {
+                                TempData["ErrorMessage"] = "Failed to submit attendance. Please try again.";
+                            }
+                        }
                     }
                 }
+                catch (SqlException ex)
+                {
+                    TempData["ErrorMessage"] = $"SQL Error: {ex.Message}";
+                }
+                catch (Exception ex)
+                {
+                    TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+                }
             }
-            catch (Exception ex)
+            else
             {
-                TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+                TempData["ErrorMessage"] = "Session expired. Please log in again.";
             }
 
             return RedirectToAction("SubmitAttendance");

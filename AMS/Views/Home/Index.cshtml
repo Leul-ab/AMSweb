@@ -1,8 +1,25 @@
-﻿<h1>Database Connection Test</h1>
-<p>@ViewBag.Message</p>
+﻿
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head><title></title>
+        <link rel="stylesheet" href="~/css/Home.css">
+    </head>
+<body>
+    <div class="homepage-wrapper">
+        <header>
+            <h1>Welcome to AMS</h1>
+        </header>
 
-<h1>Welcome to AMS</h1>
+        <section class="content">
+            <div class="message">
+                <p>@ViewBag.Message</p>
+            </div>
 
-<a asp-controller="Teacher" asp-action="Login" class="btn btn-primary">Teacher Login</a>
-<a asp-controller="Admin" asp-action="Login" class="btn btn-secondary">Admin Login</a>
-<a asp-controller="Student" asp-action="Login" class="btn btn-primary">Student Login</a>
+            <div class="buttons">
+                <a asp-controller="Teacher" asp-action="Login" class="btn btn-teacher">Teacher Login</a>
+                <a asp-controller="Admin" asp-action="Login" class="btn btn-admin">Admin Login</a>
+                <a asp-controller="Student" asp-action="Login" class="btn btn-student">Student Login</a>
+            </div>
+        </section>
+    </div>
+</body>
+</html>

@@ -1,0 +1,96 @@
+﻿/* Global Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Poppins", sans-serif;
+}
+
+body {
+    background: linear-gradient(120deg, #6a11cb, #2575fc);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    text-align: center;
+}
+
+.homepage-wrapper {
+    max-width: 500px;
+    width: 90%;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    padding: 30px;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #fff;
+}
+
+.message p {
+    font-size: 1.1rem;
+    color: #f1f1f1;
+    margin-bottom: 30px;
+}
+
+/* Buttons Section */
+.buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+a.btn {
+    text-decoration: none;
+    padding: 12px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.btn-teacher {
+    background: #6c63ff;
+    color: #fff;
+}
+
+    .btn-teacher:hover {
+        background: #524dba;
+    }
+
+.btn-admin {
+    background: #ff6f61;
+    color: #fff;
+}
+
+    .btn-admin:hover {
+        background: #e05b4d;
+    }
+
+.btn-student {
+    background: #57c3d2;
+    color: #fff;
+}
+
+    .btn-student:hover {
+        background: #4399a3;
+    }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 2rem;
+    }
+
+    a.btn {
+        font-size: 0.9rem;
+        padding: 10px 18px;
+    }
+}

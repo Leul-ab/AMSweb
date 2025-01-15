@@ -1,24 +1,43 @@
 ﻿@model AMS.Models.Teacher
 
-<h1>Teacher Login</h1>
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head><title></title>
+        <link rel="stylesheet" href="~/css/Stylers.css">
+    </head>
+    <body>
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">
+            @TempData["ErrorMessage"]
+        </div>
+    }
+    <div class="wrapper">
+        <h1>Teacher Login</h1>
+        <form asp-action="Login" method="post">
+            <div class="form-group">
+                <label asp-for="Name"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Password"></label>
+                <input asp-for="Password" class="form-control" type="password" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+            <div class="forgot">
+                <a herf="#">Forget password?</a>
+            </div>
+            <button type="submit" class="btn btn-primary">Login</button>
 
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-danger">
-        @TempData["ErrorMessage"]
+            <div class="register-link">
+                <p>
+                    Don't have an account? <a href="#">Register</a>
+                </p>
+            </div>
+        </form>
     </div>
-}
+    </body>
+</html>
 
-<form asp-action="Login" method="post">
-    <div class="form-group">
-        <label asp-for="Name"></label>
-        <input asp-for="Name" class="form-control" />
-        <span asp-validation-for="Name" class="text-danger"></span>
-    </div>
-    <div class="form-group">
-        <label asp-for="Password"></label>
-        <input asp-for="Password" class="form-control" type="password" />
-        <span asp-validation-for="Password" class="text-danger"></span>
-    </div>
-    <button type="submit" class="btn btn-primary">Login</button>
-</form>
+
+
